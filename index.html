@@ -1,6 +1,6 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"><meta name="theme-color" content="#000000">
-<title>Night Panel for Bike GPS</title>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"><meta name="theme-color" content="#000000"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Saab Bike"><meta name="format-detection" content="telephone=no">
+<title>SAAB Bike · V4.8 手机 GPS 版</title>
 <style>
 :root{color-scheme:dark;--green:#b8fbb9;--dark:#000}
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000;color:#e0eae1;font-family:Arial,'Microsoft Yahei',sans-serif;-webkit-tap-highlight-color:transparent}
@@ -29,6 +29,22 @@ body.compact #controlArea{display:none}body.compact .fab{display:block}body.comp
 @media(max-width:650px){.stage{width:100%;aspect-ratio:1200/620;min-height:unset;padding:3px}.bezel{border-radius:12px}.controls button,.controls select{padding:7px 9px;font-size:11px}.heading small{display:none}#controlArea{margin-top:4px}}
 @media(orientation:portrait){.rotate{display:block}}
 @media(prefers-reduced-motion:reduce){.lamp-group{transition-duration:500ms}}
+
+/* V4.8: phone visual viewport and standalone support; preserve original desktop drawing. */
+body{overflow-x:hidden}
+@media(max-width:850px){
+ .stage{min-height:0;max-height:none;aspect-ratio:615/412;width:100vw;padding:2px}
+ .bezel{border-radius:13px}
+ body.compact{height:100vh;height:100dvh;overflow:hidden}
+ body.compact .stage{width:100vw;height:100vh;height:100dvh;max-height:none;min-height:0;aspect-ratio:auto;box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+ body.compact .fab{display:block;bottom:max(10px,env(safe-area-inset-bottom));right:max(10px,env(safe-area-inset-right));opacity:.75}
+}
+@media(max-width:850px) and (orientation:landscape){
+ .stage{height:86vh;height:86dvh;min-height:0;max-height:none;aspect-ratio:auto;padding:2px}
+ body.compact .stage{height:100vh;height:100dvh;max-height:none}
+ .rotate{display:none}
+}
+@media(max-width:850px) and (orientation:portrait){ .stage{max-height:none;min-height:0;aspect-ratio:615/412} }
 </style></head>
 <body>
 <main class="stage" aria-label="萨博风格自行车速度仪表">
@@ -46,7 +62,7 @@ body.compact #controlArea{display:none}body.compact .fab{display:block}body.comp
 </svg></div></main>
 <div class="rotate">扁圆仪表比例参考萨博原车；横屏观看效果最佳</div>
 <section id="controlArea"><div class="top">
- <div class="heading"><b>SAAB BIKE · NIGHT PANEL</b><small>V4.7 · 真车配色微调</small></div>
+ <div class="heading"><b>SAAB BIKE · NIGHT PANEL</b><small>V4.8 · iPhone 横屏适配</small></div>
  <div class="live"><span><span class="dot" id="stateDot"></span><span id="stateText">模拟待机</span></span><span id="freqText">数据间隔 —</span><span id="ageText">—</span></div>
  </div>
  <div class="controls">
@@ -204,7 +220,23 @@ body.compact #controlArea{display:none}body.compact .fab{display:block}body.comp
  $('speedSlider').addEventListener('input',e=>{if(state.source!=='manual')manual();setSpeed(Number(e.target.value),'manual')});
  $('lights').onchange=e=>{state.lighting=e.target.value;updateLights()};
  $('hideBtn').onclick=()=>document.body.classList.add('compact');$('showBtn').onclick=()=>document.body.classList.remove('compact');
- $('fullBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(e){updateStatus('浏览器限制全屏：'+e.message,'bad')} };
+ $('fullBtn').onclick=()=>{
+  if(/iPhone|iPod|iPad/i.test(navigator.userAgent)){
+   document.body.classList.toggle('compact');
+   updateStatus('沉浸模式；添加到主屏幕后从图标启动可隐藏 Safari 工具栏','ok');
+   $('hint').textContent='Safari 分享 → 添加到主屏幕 → 从桌面打开。';
+   return;
+  }
+  const fs=document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+  if(typeof fs==='function'){
+   try{const result=fs.call(document.documentElement);if(result&&result.catch)result.catch(()=>{document.body.classList.toggle('compact');updateStatus('沉浸模式已开启；iPhone 请添加到主屏幕','ok')});}
+   catch(err){document.body.classList.toggle('compact');updateStatus('沉浸模式已开启；添加到主屏幕后可去掉 Safari 工具栏','ok')}
+  }else{
+   document.body.classList.toggle('compact');
+   updateStatus('沉浸模式已开启；从 Safari 添加到主屏幕可隐藏浏览器工具栏','ok');
+   $('hint').textContent='iOS Safari 不支持 requestFullscreen。分享 → 添加到主屏幕 → 从桌面图标启动，可隐藏地址栏。';
+  }
+ };
  function stopSources(){
   if(state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null}
   if(state.bleChar){state.bleChar.removeEventListener('characteristicvaluechanged',onBleValue);state.bleChar.stopNotifications().catch(()=>{});state.bleChar=null}
@@ -251,6 +283,15 @@ body.compact #controlArea{display:none}body.compact .fab{display:block}body.comp
  if(stop)stop.onclick=()=>{stopSources();manual()};
  // 用于接入其他网页数据源：window.SaabBike.setSpeed(23.4)
  window.SaabBike={setSpeed:(v)=>{stopDemo();setSpeed(v,'sensor')},getState:()=>({speed:state.target,shown:state.display,highLit:state.highLit,breakAt:25,angle:angleFor(state.target),source:state.source,lighting:state.lighting}),connectGPS:startGPS,serviceUUID:SERVICE,characteristicUUID:CHAR};
+
+ // Tight mobile viewBox with safe padding: keep whole arc within landscape viewport.
+ function resizeSaabGauge(){
+  const small=(window.innerWidth<=850 || /iPhone|iPod|Android/i.test(navigator.userAgent));
+  $('gauge').setAttribute('viewBox',small?'197 30 615 412':'0 0 1200 620');
+ }
+ window.addEventListener('resize',resizeSaabGauge);
+ window.addEventListener('orientationchange',resizeSaabGauge);
+ resizeSaabGauge();
  drawGauge();drawNeedle(0);setSpeed(0,'manual');requestAnimationFrame(render);
 })();
 </script></body></html>
