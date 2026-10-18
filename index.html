@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"><meta name="theme-color" content="#000000">
+<title>SAAB Bike · V4.7 手机 GPS 版</title>
+<style>
+:root{color-scheme:dark;--green:#b8fbb9;--dark:#000}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000;color:#e0eae1;font-family:Arial,'Microsoft Yahei',sans-serif;-webkit-tap-highlight-color:transparent}
+body{display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+.stage{width:min(100vw,1500px);aspect-ratio:1200/620;max-height:calc(100vh - 167px);min-height:240px;position:relative;display:flex;align-items:center;justify-content:center;padding:4px 7px 0}
+.bezel{height:100%;width:100%;background:#000;border:1px solid #080d0a;border-radius:clamp(14px,3vw,43px);overflow:hidden;display:flex;justify-content:center;align-items:center}
+#gauge{display:block;width:100%;height:100%;user-select:none;-webkit-user-select:none}
+.gauge-label{font:600 34px Arial,'Microsoft Yahei',sans-serif;fill:#c9ffad;filter:url(#greenGlow);text-anchor:middle;dominant-baseline:central}.gauge-label.low-speed{font-size:36px}.gauge-label.high-speed{font-size:34px}
+.gauge-tick{fill:#c9ffad;stroke:none;filter:url(#greenGlow)}
+.gauge-unit{fill:#c9ffad;font:600 26px Arial,sans-serif;filter:url(#greenGlow);text-anchor:middle;dominant-baseline:central}
+.lamp-group{transition:opacity 920ms cubic-bezier(.24,.55,.28,1);will-change:opacity}
+.needle{filter:url(#amberGlow)}
+#controlArea{width:min(1130px,calc(100% - 18px));margin:5px auto 12px;padding:11px 14px 12px;border:1px solid #1e3426;background:#0b110e;border-radius:16px;box-shadow:0 10px 40px #000a;z-index:10}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+.heading{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}.heading b{font-size:13px;letter-spacing:.16em;color:#b8ffbf}.heading small{font-size:11px;color:#789b80}
+.live{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:#b1c9b5}
+.dot{display:inline-block;vertical-align:middle;width:7px;height:7px;border-radius:50%;background:#e3bc6f;margin-right:4px;box-shadow:0 0 7px currentColor}.dot.ok{background:#7dff92}.dot.bad{background:#ed7d73}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:7px}button,select{background:#142117;border:1px solid #395940;color:#d1e8d3;border-radius:8px;font:inherit;font-size:12px;padding:9px 11px;cursor:pointer}button:hover,select:hover{border-color:#8cc999}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #8bd99b}
+button.active{background:#254a2e;color:#dcffe0;border-color:#7ac48a}button.primary{color:#d7ffe0;border-color:#6aaf78}
+.controls label{font-size:12px;color:#a5b8a7;white-space:nowrap}.setting{border:1px solid #24412c;border-radius:8px;padding:8px;color:#bdeac3;font-size:12px}
+.speedRow{flex:1 1 100%;display:flex;align-items:center;gap:11px;margin-top:3px;color:#9eb69e;font-size:12px}.speedRow input{accent-color:#a2e8ab;flex:1 1 auto;min-width:90px}.speedRow output{font-size:15px;color:#c4ffc7;min-width:89px;text-align:right;font-variant-numeric:tabular-nums}
+.note{margin-top:8px;color:#86a28d;font-size:11px;line-height:1.5;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.fab{display:none;position:fixed;right:12px;bottom:12px;background:#101811dd;z-index:20}
+body.compact #controlArea{display:none}body.compact .fab{display:block}body.compact .stage{width:100vw;max-width:none;aspect-ratio:1200/620;max-height:99vh;min-height:unset;padding:0}body.compact .bezel{border-color:#030503}
+.rotate{display:none;font-size:11px;color:#79917d;text-align:center;padding:0 0 5px}
+@media(max-width:650px){.stage{width:100%;aspect-ratio:1200/620;min-height:unset;padding:3px}.bezel{border-radius:12px}.controls button,.controls select{padding:7px 9px;font-size:11px}.heading small{display:none}#controlArea{margin-top:4px}}
+@media(orientation:portrait){.rotate{display:block}}
+@media(prefers-reduced-motion:reduce){.lamp-group{transition-duration:500ms}}
+</style></head>
+<body>
+<main class="stage" aria-label="萨博风格自行车速度仪表">
+<div class="bezel"><svg id="gauge" viewBox="0 0 1200 620" role="img" aria-label="萨博夜间仪表：0至60公里每小时，25公里每小时起使用密刻度">
+<defs>
+ <filter id="greenGlow" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="1.6" in="SourceGraphic" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="amberGlow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.3" in="SourceGraphic" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <linearGradient id="needleFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd7b3"/><stop offset=".34" stop-color="#f8bc95"/><stop offset=".72" stop-color="#ef9878"/><stop offset="1" stop-color="#e97e66"/></linearGradient>
+</defs>
+<g id="lowZone" class="lamp-group" opacity="1"></g>
+<g id="highZone" class="lamp-group" opacity="0.01"></g>
+<g id="needle" class="needle">
+ <path id="needleBlade" fill="url(#needleFill)" />
+</g>
+</svg></div></main>
+<div class="rotate">扁圆仪表比例参考萨博原车；横屏观看效果最佳</div>
+<section id="controlArea"><div class="top">
+ <div class="heading"><b>SAAB BIKE · NIGHT PANEL</b><small>V4.7 · 真车配色微调</small></div>
+ <div class="live"><span><span class="dot" id="stateDot"></span><span id="stateText">模拟待机</span></span><span id="freqText">数据间隔 —</span><span id="ageText">—</span></div>
+ </div>
+ <div class="controls">
+ <button id="gpsBtn" class="primary">◎ 启动手机 GPS</button><button id="stopBtn">停止定位</button>
+ <button id="demoBtn">▶ 模拟骑行</button><button id="manualBtn" class="active">手动测试</button>
+ <span class="setting">刻度分界 25 km/h · 固定</span>
+ <label>照明 <select id="lights"><option value="night">0–25 / 25–60 渐亮</option><option value="all">全部点亮</option></select></label>
+ <button id="fullBtn">⛶ 全屏仪表</button><button id="hideBtn">隐藏控制栏</button>
+ <div class="speedRow"><label for="speedSlider">测试速度</label><input type="range" id="speedSlider" min="0" max="60" step="0.1" value="0"><output id="speedReadout">0.0 km/h</output></div>
+ </div>
+ <div class="note"><span id="hint">测试：25 km/h 触发第二段渐亮；降至23.7以下渐灭。</span><span id="diag">V4.4：实心矩形径向刻度；5–25 字体略大，30–60 略小</span></div>
+ </section>
+<button class="fab" id="showBtn">显示控制</button>
+<script>
+(()=>{
+ 'use strict';
+ const BUILD='GPS';
+ const NS='http://www.w3.org/2000/svg';
+ const $=id=>document.getElementById(id);
+ const state={target:0,display:0,source:'manual',lastData:null,lastArrival:null,intervals:[],lighting:'night',highLit:false,gpsWatch:null,gpsLast:null,bleDevice:null,bleChar:null,serialPort:null,serialReader:null,serialActive:false,simRunning:false,simOrigin:0};
+ // 两档严格等角距（每 5 km/h）：0..25 疏，25..60 密，倍率 1.65，分界永远为 25。
+ // V4.3：数字贴近刻度；矩形刻度按类型固定宽度与长度。
+ const cx=500,cy=335,R=275,start=195,end=-15,ratio=1.65,wide=(start-end)/(5+7/ratio),dense=wide/ratio;
+ const angleFor=v=>{let x=Math.max(0,Math.min(60,Number(v)||0));return x<=25?start-x/5*wide:start-5*wide-(x-25)/5*dense};
+ const polar=(r,a)=>({x:cx+R*r*Math.cos(a*Math.PI/180),y:cy-R*r*Math.sin(a*Math.PI/180)});
+ const S=(tag,attrs)=>{const el=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))el.setAttribute(k,v);return el};
+ function drawGauge(){
+  const low=$('lowZone'),high=$('highZone');
+  low.replaceChildren();high.replaceChildren();
+
+  // V4.6：更接近真车的实心矩形刻度。各类型宽度固定，
+  // 25 及以前刻度略长，25 以后更密且略短，但差别仍然克制。
+  function addTick(value,type,group){
+   const a=angleFor(value);
+   const denseRange=value>25;
+   let width,length;
+   if(type==='ten'){ width=8.0; length=denseRange?19.0:19.8; }
+   else if(type==='five'){ width=6.2; length=denseRange?14.0:14.6; }
+   else { width=4.6; length=denseRange?9.7:10.2; }
+
+   // 外端统一落在 0.955R，增大的长度只向内增长，外缘仍然整齐。
+   const centerRadius=R*.955-length/2;
+   const p=polar(centerRadius/R,a);
+   const rect=S('rect',{
+    x:(-width/2).toFixed(3),
+    y:(-length/2).toFixed(3),
+    width:width.toFixed(3),
+    height:length.toFixed(3),
+    transform:`translate(${p.x.toFixed(4)} ${p.y.toFixed(4)}) rotate(${(90-a).toFixed(4)})`,
+    fill:'#c9ffad',
+    stroke:'none',
+    'class':'gauge-tick'
+   });
+   group.appendChild(rect);
+  }
+
+  for(let i=0;i<=24;i++){
+   const v=i*2.5;
+   const type=(v%10===0)?'ten':((v%5===0)?'five':'minor');
+   addTick(v,type,v<=25?low:high);
+  }
+
+  // 数字整体再大一点，并向内轻微移动，保证与刻度保持一条窄缝，
+  // 不会贴上，也不会离得太远。5–25 稍大，30–60 略小。
+  for(let v=5;v<=60;v+=5){
+   const p=polar(.805,angleFor(v));
+   const label=S('text',{
+    x:p.x.toFixed(3),
+    y:p.y.toFixed(3),
+    'class':'gauge-label '+(v<=25?'low-speed':'high-speed')
+   });
+   label.textContent=String(v);
+   (v<=25?low:high).appendChild(label);
+  }
+
+  const unit=polar(.785,angleFor(0)-8);
+  const t=S('text',{
+   x:unit.x.toFixed(3),y:unit.y.toFixed(3),'class':'gauge-unit'
+  });
+  t.textContent='km/h';
+  low.appendChild(t);
+  updateLights();
+ }
+ function updateLights(){
+  $('lowZone').style.opacity='1';
+  $('highZone').style.opacity=(state.lighting==='all'||state.highLit)?'1':'0.009';
+ }
+ function selectLighting(speed){
+  // 开灯阈值25km/h；关灯23.7km/h，1.3km/h迟滞避免频繁闪烁。
+  if(speed>=25)state.highLit=true;
+  else if(speed<23.7)state.highLit=false;
+  updateLights();
+ }
+ function drawNeedle(speed){
+  const theta=angleFor(speed),rim=polar(1,theta);
+  const dx=rim.x-cx,dy=rim.y-cy,dirLen=Math.hypot(dx,dy)||1;
+  const ux=dx/dirLen,uy=dy/dirLen,nx=-uy,ny=ux;
+  // 固定长度；针尖越过数字环，但停在刻度线内侧。
+  const needleLength=242;
+  const p=(d,w)=>({x:cx+ux*d+nx*w,y:cy+uy*d+ny*w});
+
+  // 更接近汽车电子指针：根部圆润、主体连续收窄，前端为钝圆头而非尖点。
+  const a=p(0,10.4),c1=p(20,10.2),c2=p(52,8.9),c3=p(86,7.2);
+  const d1=p(130,5.5),d2=p(180,3.3),d3=p(220,1.7);
+  const tipL=p(235,1.6),tipC=p(242,0),tipR=p(235,-1.6);
+  const e3=p(220,-1.7),e2=p(180,-3.3),e1=p(130,-5.5),f3=p(86,-7.2);
+  const f2=p(52,-8.9),f1=p(20,-10.2),b=p(0,-10.4),cap=p(-9,0);
+
+  const path=`M${a.x.toFixed(2)},${a.y.toFixed(2)}
+   C${c1.x.toFixed(2)},${c1.y.toFixed(2)} ${c2.x.toFixed(2)},${c2.y.toFixed(2)} ${c3.x.toFixed(2)},${c3.y.toFixed(2)}
+   C${d1.x.toFixed(2)},${d1.y.toFixed(2)} ${d2.x.toFixed(2)},${d2.y.toFixed(2)} ${d3.x.toFixed(2)},${d3.y.toFixed(2)}
+   L${tipL.x.toFixed(2)},${tipL.y.toFixed(2)}
+   Q${tipC.x.toFixed(2)},${tipC.y.toFixed(2)} ${tipR.x.toFixed(2)},${tipR.y.toFixed(2)}
+   L${e3.x.toFixed(2)},${e3.y.toFixed(2)}
+   C${e2.x.toFixed(2)},${e2.y.toFixed(2)} ${e1.x.toFixed(2)},${e1.y.toFixed(2)} ${f3.x.toFixed(2)},${f3.y.toFixed(2)}
+   C${f2.x.toFixed(2)},${f2.y.toFixed(2)} ${f1.x.toFixed(2)},${f1.y.toFixed(2)} ${b.x.toFixed(2)},${b.y.toFixed(2)}
+   Q${cap.x.toFixed(2)},${cap.y.toFixed(2)} ${a.x.toFixed(2)},${a.y.toFixed(2)} Z`.replace(/\s+/g,' ');
+  $('needleBlade').setAttribute('d',path);
+ }
+ function setSpeed(kmh,src='bridge',ts=performance.now()){
+  const val=Number(kmh);if(!Number.isFinite(val))return;
+  const s=Math.max(0,Math.min(90,val));state.target=s;state.source=src;
+  if(src!=='manual'&&src!=='demo'){
+   if(state.lastArrival!==null){const d=ts-state.lastArrival;if(d>2&&d<20000){state.intervals.push(d);if(state.intervals.length>14)state.intervals.shift()}}
+   state.lastArrival=ts;state.lastData=Date.now();
+  }
+  selectLighting(s);
+  $('speedReadout').textContent=s.toFixed(1)+' km/h';
+  if(src!=='manual'&&src!=='demo'){
+   $('speedSlider').value=Math.min(60,s);
+   const ms=state.intervals.length?state.intervals.reduce((a,b)=>a+b,0)/state.intervals.length:null;
+   $('freqText').textContent=ms?'实测 '+(1000/ms).toFixed(1)+'Hz · '+Math.round(ms)+'ms':'等待频率数据';
+  }
+ }
+ function updateStatus(message,quality='standby'){$('stateText').textContent=message;$('stateDot').className='dot '+(quality==='ok'?'ok':quality==='bad'?'bad':'')}
+ let prev=performance.now();
+ function render(t){let dt=Math.min(.08,Math.max(0,(t-prev)/1000));prev=t;
+  if(state.simRunning){let e=(t-state.simOrigin)/1000;let cycle=e%38;
+    // 起步->20->35->45->刹车：测试20/40段跳变
+    const key=[[0,0],[3,7],[8,22],[13,31],[19,36],[24,45],[28,43],[33,15],[38,0]];
+    let v=0;for(let i=1;i<key.length;i++){if(cycle<=key[i][0]){let w=(cycle-key[i-1][0])/(key[i][0]-key[i-1][0]);v=key[i-1][1]+(key[i][1]-key[i-1][1])*w;break}}
+    setSpeed(v,'demo');$('speedSlider').value=v;
+  }
+  // 180ms 视觉惯性: 来自实际测量的目标速度不会被假装为额外测量
+  let k=1-Math.exp(-dt/.18);state.display+=k*(state.target-state.display);
+  drawNeedle(state.display);
+  if(state.lastData && (t%400)<45){let age=(Date.now()-state.lastData)/1000;$('ageText').textContent='距上次数据 '+age.toFixed(1)+'s';
+   if(age>5&&state.source!=='manual'&&state.source!=='demo')updateStatus('速度数据已过期（保持末值）','bad')}
+  requestAnimationFrame(render)
+ }
+ function stopDemo(){state.simRunning=false;$('demoBtn').classList.remove('active');$('demoBtn').textContent='▶ 模拟骑行'}
+ function startDemo(){stopSources();state.interval=[];state.intervals=[];state.lastData=null;state.lastArrival=null;state.simRunning=true;state.simOrigin=performance.now();state.source='demo';$('demoBtn').classList.add('active');$('manualBtn').classList.remove('active');$('demoBtn').textContent='■ 停止模拟';updateStatus('模拟骑行','ok');$('freqText').textContent='模拟每帧更新'}
+ function manual(){stopDemo();stopSources();state.source='manual';state.intervals=[];state.lastArrival=null;state.lastData=null;setSpeed(Number($('speedSlider').value),'manual');$('manualBtn').classList.add('active');updateStatus('手动测试');$('freqText').textContent='数据间隔 —';$('ageText').textContent='—'}
+ $('demoBtn').onclick=()=>state.simRunning?manual():startDemo();$('manualBtn').onclick=manual;
+ $('speedSlider').addEventListener('input',e=>{if(state.source!=='manual')manual();setSpeed(Number(e.target.value),'manual')});
+ $('lights').onchange=e=>{state.lighting=e.target.value;updateLights()};
+ $('hideBtn').onclick=()=>document.body.classList.add('compact');$('showBtn').onclick=()=>document.body.classList.remove('compact');
+ $('fullBtn').onclick=async()=>{try{if(!document.fullscreenElement)await document.documentElement.requestFullscreen();else await document.exitFullscreen()}catch(e){updateStatus('浏览器限制全屏：'+e.message,'bad')} };
+ function stopSources(){
+  if(state.gpsWatch!==null){navigator.geolocation.clearWatch(state.gpsWatch);state.gpsWatch=null}
+  if(state.bleChar){state.bleChar.removeEventListener('characteristicvaluechanged',onBleValue);state.bleChar.stopNotifications().catch(()=>{});state.bleChar=null}
+  if(state.bleDevice?.gatt?.connected)state.bleDevice.gatt.disconnect();state.bleDevice=null;
+  if(state.serialReader){state.serialActive=false;state.serialReader.cancel().catch(()=>{});}if(state.serialPort){let p=state.serialPort;state.serialPort=null;setTimeout(()=>p.close().catch(()=>{}),150)}
+ }
+ // GPS 仅用系统实际上报的速度或有明确条件的位移回退，不会凭动画制造 20Hz 物理测速
+ function haversine(a,b){let rad=Math.PI/180,dlat=(b.latitude-a.latitude)*rad,dlon=(b.longitude-a.longitude)*rad;
+  let q=Math.sin(dlat/2)**2+Math.cos(a.latitude*rad)*Math.cos(b.latitude*rad)*Math.sin(dlon/2)**2;return 6371000*2*Math.asin(Math.min(1,Math.sqrt(q)))}
+ function gpsUpdate(pos){let c=pos.coords,ms=Number(c.speed),speed=null,src='GPS';if(c.speed!==null && c.speed!==undefined && Number.isFinite(ms) && ms>=0)speed=ms*3.6;
+  if(speed===null&&state.gpsLast){let old=state.gpsLast,delta=(pos.timestamp-old.ts)/1000;
+    if(delta>=1&&delta<=6 && c.accuracy<20&&old.accuracy<20){let d=haversine(c,old.coords);
+     if(d>Math.max(3,(c.accuracy+old.accuracy)*.5)){speed=d/delta*3.6;src='GPS位移估算'}}}
+  state.gpsLast={coords:{latitude:c.latitude,longitude:c.longitude},ts:pos.timestamp,accuracy:c.accuracy};
+  if(speed!==null){setSpeed(speed,'gps');updateStatus(src+' · ±'+Math.round(c.accuracy)+'m','ok')}else updateStatus('已定位，但尚无可靠速度值','standby');}
+ function startGPS(){if(!('geolocation' in navigator)){updateStatus('浏览器没有定位 API','bad');return}
+  if(!isSecureContext){updateStatus('GPS 需要 HTTPS 或 localhost','bad');$('hint').textContent='请用 HTTPS 部署到 GitHub Pages；file:// 在手机上可能无法提供定位权限。';return}
+  stopDemo();stopSources();state.lastArrival=null;state.lastData=null;state.intervals=[];state.source='gps';$('manualBtn').classList.remove('active');updateStatus('等待 GPS 定位…');$('freqText').textContent='等待更新';
+  state.gpsWatch=navigator.geolocation.watchPosition(gpsUpdate,e=>{updateStatus('GPS 错误：'+e.message,'bad')},{enableHighAccuracy:true,maximumAge:0,timeout:20000})}
+ // 自制传感器的 BLE 特征采用 UTF-8 一行速度数值（km/h）如 "24.73"，默认20次/秒
+ const SERVICE='8c210010-caf3-4b1f-af51-ff0100000200';
+ const CHAR='8c210011-caf3-4b1f-af51-ff0100000200';
+ function sensorValue(str){let v;
+  try{let o=JSON.parse(str);v=typeof o==='object'?(o.speedKmh??o.speed):o}catch(e){v=str.replace(/^KMH\s*[:=]\s*/i,'').trim()}
+  let n=Number(v);if(!Number.isFinite(n)||n<0||n>130)return;setSpeed(n,'sensor');updateStatus('高速轮速实时输入','ok');}
+ const decoder=new TextDecoder();
+ function onBleValue(ev){sensorValue(decoder.decode(ev.target.value))}
+ async function startBLE(){if(!navigator.bluetooth){updateStatus('当前浏览器不支持 Web Bluetooth（建议 Android Chrome）','bad');return}
+  stopDemo();stopSources();try{updateStatus('正在搜索 ESP32 轮速模块…');
+   let dev=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}],optionalServices:[SERVICE]});state.bleDevice=dev;
+   dev.addEventListener('gattserverdisconnected',()=>{if(state.source==='sensor')updateStatus('BLE 设备断开','bad')});
+   let server=await dev.gatt.connect(),svc=await server.getPrimaryService(SERVICE),ch=await svc.getCharacteristic(CHAR);
+   await ch.startNotifications();ch.addEventListener('characteristicvaluechanged',onBleValue);state.bleChar=ch;state.source='sensor';state.intervals=[];state.lastArrival=null;state.lastData=null;
+   $('manualBtn').classList.remove('active');updateStatus('已连接 '+(dev.name||'ESP32')+'，等待数据','ok')
+  }catch(err){updateStatus('BLE连接失败：'+err.message,'bad')}}
+ async function startSerial(){if(!navigator.serial){updateStatus('当前浏览器不支持 Web Serial（建议桌面 Chrome）','bad');return}
+  stopDemo();stopSources();try{let p=await navigator.serial.requestPort();await p.open({baudRate:115200});state.serialPort=p;state.source='sensor';state.serialActive=true;state.intervals=[];state.lastArrival=null;state.lastData=null;
+   $('manualBtn').classList.remove('active');updateStatus('串口已连接，等待车速','ok');let rd=p.readable.getReader();state.serialReader=rd;let buf='';
+   while(state.serialActive){let {value,done}=await rd.read();if(done)break;buf+=decoder.decode(value,{stream:true});let lines=buf.split(/\r?\n/);buf=lines.pop()||'';for(let line of lines)sensorValue(line)}
+   rd.releaseLock();state.serialReader=null;
+  }catch(err){if(state.serialActive)updateStatus('串口：'+err.message,'bad')}finally{state.serialActive=false}}
+ const gps=$('gpsBtn'),ble=$('bleBtn'),serial=$('serialBtn'),stop=$('stopBtn');
+ if(gps)gps.onclick=startGPS;if(ble)ble.onclick=startBLE;if(serial)serial.onclick=startSerial;
+ if(stop)stop.onclick=()=>{stopSources();manual()};
+ // 用于接入其他网页数据源：window.SaabBike.setSpeed(23.4)
+ window.SaabBike={setSpeed:(v)=>{stopDemo();setSpeed(v,'sensor')},getState:()=>({speed:state.target,shown:state.display,highLit:state.highLit,breakAt:25,angle:angleFor(state.target),source:state.source,lighting:state.lighting}),connectGPS:startGPS,serviceUUID:SERVICE,characteristicUUID:CHAR};
+ drawGauge();drawNeedle(0);setSpeed(0,'manual');requestAnimationFrame(render);
+})();
+</script></body></html>
